@@ -139,7 +139,11 @@ public class TimePickerPopupSkin implements Skin<TimePickerPopup> {
             super.updateItem(item, empty);
 
             if (!empty && item != null) {
-                setText(Integer.toString(item));
+                if (item < 10) {
+                    setText("0" + item);
+                } else {
+                    setText(Integer.toString(item));
+                }
             } else {
                 setText("");
             }
