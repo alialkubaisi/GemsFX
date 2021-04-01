@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>GemsFXParent</name>
-    <groupId>com.dlsc.gemsfx</groupId>
+    <groupId>ch.eswitch.gemsfx</groupId>
     <artifactId>parent</artifactId>
     <version>1.29.1</version>
     <packaging>pom</packaging>
@@ -60,10 +60,10 @@
 
     <distributionManagement>
         <repository>
-            <id>bintray-dlsc-oss-repository</id>
-            <name>dlsc-oss-repository</name>
+            <id>github</id>
+            <name>eswitch</name>
             <url>
-                https://api.bintray.com/maven/dlsc-oss/repository/GemsFX/;publish=1
+                https://maven.pkg.github.com/alialkubaisi/gemsfx
             </url>
         </repository>
     </distributionManagement>
