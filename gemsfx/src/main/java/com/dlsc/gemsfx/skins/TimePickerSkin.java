@@ -167,7 +167,7 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
             maximumValueProperty().bind(Bindings.createObjectBinding(() -> getSkinnable().getLatestTime().getHour(), getSkinnable().latestTimeProperty()));
 
             addEventHandler(KeyEvent.KEY_PRESSED, evt -> {
-                if (evt.getCode().equals(KeyCode.RIGHT) || evt.getCode().equals(KeyCode.TAB)) {
+                if (evt.getCode().equals(KeyCode.RIGHT) || evt.getCode().equals(KeyCode.TAB) && !minuteField.isFocused()) {
                     minuteField.requestFocus();
                     evt.consume();
                 }
