@@ -4,7 +4,7 @@ module com.dlsc.gemsfx.demo {
     requires org.controlsfx.controls;
     requires jpro.webapi;
     requires fr.brouillard.oss.cssfx;
-    requires com.dlsc.gemsfx;
+    requires ch.eswitch.gemsfx;
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.ikonli.materialdesign;
 

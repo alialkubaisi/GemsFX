@@ -1,4 +1,4 @@
-module com.dlsc.gemsfx {
+module ch.eswitch.gemsfx {
     requires javafx.base;
     requires transitive javafx.controls;
     requires javafx.swing;
