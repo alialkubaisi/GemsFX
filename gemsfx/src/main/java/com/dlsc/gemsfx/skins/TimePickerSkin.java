@@ -199,7 +199,7 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
             setMaximumValue(59);
 
             addEventHandler(KeyEvent.KEY_PRESSED, evt -> {
-                if (evt.getCode().equals(KeyCode.LEFT) || PREVIOUS_CELL_KEY_CODE_COMBINATION.match(evt)) {
+                if (evt.getCode().equals(KeyCode.LEFT) || PREVIOUS_CELL_KEY_CODE_COMBINATION.match(evt) && !hourField.isFocused()) {
                     hourField.requestFocus();
                     evt.consume();
                 }
