@@ -26,8 +26,6 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
 
     private static final PseudoClass EMPTY_PSEUDO_CLASS = PseudoClass.getPseudoClass("empty");
 
-    private static final KeyCodeCombination PREVIOUS_CELL_KEY_CODE_COMBINATION = new KeyCodeCombination(KeyCode.TAB, KeyCombination.SHIFT_DOWN);
-
     private final HourField hourField;
 
     private final MinuteField minuteField;
@@ -167,7 +165,7 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
             maximumValueProperty().bind(Bindings.createObjectBinding(() -> getSkinnable().getLatestTime().getHour(), getSkinnable().latestTimeProperty()));
 
             addEventHandler(KeyEvent.KEY_PRESSED, evt -> {
-                if (evt.getCode().equals(KeyCode.RIGHT) || evt.getCode().equals(KeyCode.TAB) && !minuteField.isFocused()) {
+                if (evt.getCode().equals(KeyCode.RIGHT)) {
                     minuteField.requestFocus();
                     evt.consume();
                 }
@@ -199,7 +197,7 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
             setMaximumValue(59);
 
             addEventHandler(KeyEvent.KEY_PRESSED, evt -> {
-                if (evt.getCode().equals(KeyCode.LEFT) || PREVIOUS_CELL_KEY_CODE_COMBINATION.match(evt) && !hourField.isFocused()) {
+                if (evt.getCode().equals(KeyCode.LEFT)) {
                     hourField.requestFocus();
                     evt.consume();
                 }
