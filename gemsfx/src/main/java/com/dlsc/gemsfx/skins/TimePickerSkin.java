@@ -85,6 +85,10 @@ public class TimePickerSkin extends SkinBase<TimePicker> {
             if (evt.getCode().equals(KeyCode.ESCAPE)) {
                 popup.hide();
             }
+            else if(evt.getCode().equals(KeyCode.ENTER)) {
+                ((TimePickerPopupSkin) popup.getSkin()).setSelectedTime();
+                popup.hide();
+            }
         });
 
         updateEmptyPseudoClass();

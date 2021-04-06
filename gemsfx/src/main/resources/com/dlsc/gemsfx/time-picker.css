@@ -36,6 +36,15 @@
     -fx-icon-color: -fx-mark-color;
 }
 
+.popup-button {
+    -fx-background-color: transparent;
+}
+
+.popup-button > .ikonli-font-icon {
+    -fx-icon-size: 20px;
+    -fx-icon-color: -fx-mark-color;
+}
+
 .time-picker > .box > .fields-box {
     -fx-padding: 0px 5px;
 }
