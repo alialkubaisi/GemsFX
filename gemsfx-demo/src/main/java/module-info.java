@@ -3,6 +3,8 @@ module com.dlsc.gemsfx.demo {
 
     requires com.dlsc.pdfviewfx;
 
+    requires ch.eswitch.gemsfx;
+
     requires javafx.web;
     requires javafx.controls;
 
@@ -10,9 +12,6 @@ module com.dlsc.gemsfx.demo {
 
     requires org.scenicview.scenicview;
     requires org.controlsfx.controls;
-    requires jpro.webapi;
-    requires fr.brouillard.oss.cssfx;
-    requires ch.eswitch.gemsfx;
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.ikonli.materialdesign;
 

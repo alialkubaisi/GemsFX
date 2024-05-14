@@ -1,6 +1,11 @@
 package com.dlsc.gemsfx;
 
 import com.dlsc.gemsfx.skins.TimePickerSkin;
+
+import java.time.LocalTime;
+import java.util.Objects;
+import java.util.function.Consumer;
+
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -11,22 +16,17 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.MapChangeListener;
 import javafx.scene.Node;
+import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.Skin;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Region;
 
-import java.time.LocalTime;
-import java.util.Objects;
-import java.util.function.Consumer;
-
 /**
  * A control for letting the user enter a time of day (see {@link LocalTime}). The control
- * can be configured to only enter a time within a given time range. It can also be configured
- * to show hours and minutes, or hours and minutes and seconds, or hours and minutes and seconds
- * and milliseconds (see {@link #formatProperty()})
+ * can be configured to only enter a time within a given time range.
  */
-public class TimePicker extends CustomComboBox<LocalTime> {
+public class TimePicker extends Control {
 
     /**
      * The time picker control supports 12 and 24 hour times. 12 hour times
@@ -57,35 +57,15 @@ public class TimePicker extends CustomComboBox<LocalTime> {
 
         setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        hoursSeparatorProperty().addListener(it -> {
-            if (getHoursSeparator() == null) {
-                throw new IllegalArgumentException("hour separator can not be null");
+        separatorProperty().addListener(it -> {
+            if (getSeparator() == null) {
+                throw new IllegalArgumentException("separator can not be null");
             }
         });
 
-        minutesSeparatorProperty().addListener(it -> {
-            if (getMinutesSeparator() == null) {
-                throw new IllegalArgumentException("minutes separator can not be null");
-            }
-        });
-
-        secondsSeparatorProperty().addListener(it -> {
-            if (getSecondsSeparator() == null) {
-                throw new IllegalArgumentException("seconds separator can not be null");
-            }
-        });
-
-        Label hourSeparator = new Label(":");
-        hourSeparator.getStyleClass().add("separator");
-        setHoursSeparator(hourSeparator);
-
-        Label minutesSeparator = new Label(":");
-        minutesSeparator.getStyleClass().add("separator");
-        setMinutesSeparator(minutesSeparator);
-
-        Label secondsSeparator = new Label(".");
-        secondsSeparator.getStyleClass().add("separator");
-        setSecondsSeparator(secondsSeparator);
+        Label label = new Label(":");
+        label.getStyleClass().add("separator");
+        setSeparator(label);
 
         setTime(LocalTime.now());
 
@@ -119,6 +99,11 @@ public class TimePicker extends CustomComboBox<LocalTime> {
             }
         });
 
+        /*
+         * Added here, too, as a work-around for styling issues related to Ikonli font icon.
+         */
+        getStylesheets().add(TimePicker.class.getResource("time-picker.css").toExternalForm());
+
         setOnKeyPressed(evt -> {
             if (evt.getCode().equals(KeyCode.F4) || evt.getCode().equals(KeyCode.ENTER)) {
                 getOnShowPopup().accept(this);
@@ -127,7 +112,10 @@ public class TimePicker extends CustomComboBox<LocalTime> {
 
         MapChangeListener<? super Object, ? super Object> propertiesListener = change -> {
             if (change.wasAdded()) {
-                if (change.getKey().equals("ADJUST_TIME")) {
+                if (change.getKey().equals("TIME_PICKER_POPUP")) {
+                    setShowing(!isShowing());
+                    getProperties().remove("TIME_PICKER_POPUP");
+                } else if (change.getKey().equals("ADJUST_TIME")) {
                     adjust();
                     getProperties().remove("ADJUST_TIME");
                 } else if (change.getKey().equals("CLEAR_ADJUSTED_TIME")) {
@@ -138,7 +126,6 @@ public class TimePicker extends CustomComboBox<LocalTime> {
                     try {
                         setTime((LocalTime) change.getValueAdded());
                     } finally {
-                        getProperties().remove("NEW_TIME");
                         adjustmentInProgress = false;
                     }
                 }
@@ -154,6 +141,39 @@ public class TimePicker extends CustomComboBox<LocalTime> {
         });
 
         setOnShowPopup(picker -> show());
+    }
+
+    private final ReadOnlyBooleanWrapper showing = new ReadOnlyBooleanWrapper(this, "showing", false);
+
+    public final boolean isShowing() {
+        return showing.get();
+    }
+
+    /**
+     * A flag used to signal whether the popup should be showing itself or not.
+     *
+     * @return true if the popup should be showing
+     */
+    public final ReadOnlyBooleanProperty showingProperty() {
+        return showing.getReadOnlyProperty();
+    }
+
+    private void setShowing(boolean showing) {
+        this.showing.set(showing);
+    }
+
+    /**
+     * Forces the popup for hour and minute selection to show itself.
+     */
+    public final void show() {
+        setShowing(true);
+    }
+
+    /**
+     * Forces the popup for hour and minute selection to hide itself.
+     */
+    public final void hide() {
+        setShowing(false);
     }
 
     private final ReadOnlyBooleanWrapper adjusted = new ReadOnlyBooleanWrapper(this, "adjusted");
@@ -214,46 +234,24 @@ public class TimePicker extends CustomComboBox<LocalTime> {
         this.latestTime.set(latestTime);
     }
 
-    private final ObjectProperty<Node> hoursSeparator = new SimpleObjectProperty<>(this, "separator");
+    private final ObjectProperty<Node> separator = new SimpleObjectProperty<>(this, "separator");
 
-    @Deprecated
     public final Node getSeparator() {
-        return hoursSeparator.get();
+        return separator.get();
     }
 
     /**
      * The node that will be placed between the hours and the minutes field. The
      * default separator is a label with text ":".
      *
-     * @return a node used as a hoursSeparator
-     * @deprecated we now have more than just one separator, hence use {@link #hoursSeparatorProperty()} etc...
+     * @return a node used as a separator
      */
-    @Deprecated
     public final ObjectProperty<Node> separatorProperty() {
-        return hoursSeparator;
+        return separator;
     }
 
-    @Deprecated
     public final void setSeparator(Node separator) {
-        this.hoursSeparator.set(separator);
-    }
-
-    public final Node getHoursSeparator() {
-        return hoursSeparator.get();
-    }
-
-    /**
-     * The node that will be placed between the hours and the minutes field. The
-     * default separator is a label with text ":".
-     *
-     * @return a node used as a hoursSeparator
-     */
-    public final ObjectProperty<Node> hoursSeparatorProperty() {
-        return hoursSeparator;
-    }
-
-    public final void setHoursSeparator(Node separator) {
-        this.hoursSeparator.set(separator);
+        this.separator.set(separator);
     }
 
     private final BooleanProperty showPopupTriggerButton = new SimpleBooleanProperty(this, "showPopupTriggerButton", true);
@@ -306,10 +304,8 @@ public class TimePicker extends CustomComboBox<LocalTime> {
 
             int hour = time.getHour();
             int minute = time.getMinute();
-            int second = time.getSecond();
-            int nano = time.getNano();
 
-            LocalTime newTime = LocalTime.of(hour, minute, second, nano);
+            LocalTime newTime = LocalTime.of(hour, minute);
 
             if (time.isBefore(earliestTime)) {
 
@@ -318,17 +314,9 @@ public class TimePicker extends CustomComboBox<LocalTime> {
                     newTime = newTime.withHour(earliestTime.getHour());
                 }
 
-                // still too early? adjust lower time unites (minutes, seconds, nano)
+                // still too early? adjust minutes
                 if (newTime.isBefore(earliestTime)) {
                     newTime = newTime.withMinute(earliestTime.getMinute());
-                }
-
-                if (newTime.isBefore(latestTime)) {
-                    newTime = newTime.withSecond(earliestTime.getSecond());
-                }
-
-                if (newTime.isBefore(latestTime)) {
-                    newTime = newTime.withNano(earliestTime.getNano());
                 }
 
             } else if (time.isAfter(latestTime)) {
@@ -338,24 +326,14 @@ public class TimePicker extends CustomComboBox<LocalTime> {
                     newTime = newTime.withHour(latestTime.getHour());
                 }
 
-                // still too early? adjust lower time units (minutes, seconds, nano)
+                // still too early? adjust minutes
                 if (newTime.isAfter(latestTime)) {
                     newTime = newTime.withMinute(latestTime.getMinute());
                 }
 
-                if (newTime.isAfter(latestTime)) {
-                    newTime = newTime.withSecond(latestTime.getSecond());
-                }
-
-                if (newTime.isAfter(latestTime)) {
-                    newTime = newTime.withNano(latestTime.getNano());
-                }
             }
 
-            boolean adjusted = newTime.getHour() != time.getHour()
-                    || newTime.getMinute() != time.getMinute()
-                    || newTime.getSecond() != time.getSecond()
-                    || newTime.getNano() != time.getNano();
+            boolean adjusted = newTime.getHour() != time.getHour() || newTime.getMinute() != time.getMinute();
 
             if (adjusted) {
                 setTime(newTime);
@@ -370,7 +348,20 @@ public class TimePicker extends CustomComboBox<LocalTime> {
     private boolean adjustViaStepRate() {
         LocalTime time = getTime();
         if (time != null) {
-            LocalTime adjustedTime = getAdjustedTime(time);
+            int hour = time.getHour();
+
+            int unadjustedMinutes = time.getMinute();
+            int lowerAdjustment = unadjustedMinutes - time.getMinute() % getStepRateInMinutes();
+            int higherAdjustment = lowerAdjustment + getStepRateInMinutes();
+
+            LocalTime adjustedTime = LocalTime.of(hour, lowerAdjustment);
+            if (Math.abs(lowerAdjustment - unadjustedMinutes) > Math.abs(higherAdjustment - unadjustedMinutes)) {
+                if (higherAdjustment > 59) {
+                    higherAdjustment = lowerAdjustment;
+                }
+
+                adjustedTime = LocalTime.of(hour, higherAdjustment);
+            }
 
             /*
              * We have to check "manually" for equality of the original time and the adjusted time as equality for us
@@ -385,25 +376,6 @@ public class TimePicker extends CustomComboBox<LocalTime> {
         }
 
         return false;
-    }
-
-    private LocalTime getAdjustedTime(LocalTime time) {
-        int hour = time.getHour();
-
-        int unadjustedMinutes = time.getMinute();
-        int lowerAdjustment = unadjustedMinutes - time.getMinute() % getStepRateInMinutes();
-        int higherAdjustment = lowerAdjustment + getStepRateInMinutes();
-
-        LocalTime adjustedTime = LocalTime.of(hour, lowerAdjustment);
-        if (Math.abs(lowerAdjustment - unadjustedMinutes) > Math.abs(higherAdjustment - unadjustedMinutes)) {
-            if (higherAdjustment > 59) {
-                higherAdjustment = lowerAdjustment;
-            }
-
-            adjustedTime = LocalTime.of(hour, higherAdjustment);
-        }
-
-        return adjustedTime;
     }
 
     private final ObjectProperty<LocalTime> time = new SimpleObjectProperty<>(this, "time");
@@ -422,23 +394,7 @@ public class TimePicker extends CustomComboBox<LocalTime> {
     }
 
     public final void setTime(LocalTime time) {
-        if (null == getFormat() || time == null) {
-            this.time.set(time);
-        } else {
-            switch (getFormat()) {
-                case HOURS_MINUTES:
-                    var adj = time.withSecond(0);
-                    adj = adj.withNano(0);
-                    this.time.set(adj);
-                    break;
-                case HOURS_MINUTES_SECONDS:
-                    this.time.set(time.withNano(0));
-                    break;
-                default:
-                    this.time.set(time);
-                    break;
-            }
-        }
+        this.time.set(time);
     }
 
     private final IntegerProperty stepRateInMinutes = new SimpleIntegerProperty(this, "stepRateInMinutes", 1);

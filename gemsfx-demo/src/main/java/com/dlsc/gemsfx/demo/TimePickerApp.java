@@ -1,8 +1,12 @@
 package com.dlsc.gemsfx.demo;
 
-import com.dlsc.gemsfx.CustomComboBox;
 import com.dlsc.gemsfx.TimePicker;
-import com.dlsc.gemsfx.TimePicker.Format;
+
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.FormatStyle;
+
 import fr.brouillard.oss.cssfx.CSSFX;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
@@ -24,24 +28,12 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.format.FormatStyle;
-
 public class TimePickerApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
         TimePicker timePicker = new TimePicker();
 
-        ComboBox<Format> formatComboBox = new ComboBox<>();
-        formatComboBox.getItems().add(Format.HOURS_MINUTES);
-        formatComboBox.getItems().add(Format.HOURS_MINUTES_SECONDS);
-        formatComboBox.getItems().add(Format.HOURS_MINUTES_SECONDS_MILLIS);
-        formatComboBox.setOnAction(event -> timePicker.formatProperty().set(formatComboBox.getSelectionModel().getSelectedItem()));
-        formatComboBox.getSelectionModel().select(Format.HOURS_MINUTES);
-        
         CheckBox rollOverBox = new CheckBox("Rollover");
         rollOverBox.selectedProperty().bindBidirectional(timePicker.rolloverProperty());
 
@@ -67,7 +59,7 @@ public class TimePickerApp extends Application {
         valueLabel.textProperty().bind(Bindings.createStringBinding(() -> {
             LocalTime time = timePicker.getTime();
             if (time != null) {
-                return "Time: " + DateTimeFormatter.ofPattern("H:m:s.SSS").format(time) + " (adjusted: " + (timePicker.isAdjusted() ? "yes" : "no") + ")";
+                return "Time: " + DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time) + " (adjusted: " + (timePicker.isAdjusted() ? "yes" : "no") + ")";
             }
             return "empty";
         }, timePicker.timeProperty(), timePicker.adjustedProperty()));
@@ -82,7 +74,6 @@ public class TimePickerApp extends Application {
             try {
                 DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).parse(datePicker.getEditor().getText());
             } catch (DateTimeParseException ex) {
-                // ignore
             }
         });
 
@@ -94,19 +85,19 @@ public class TimePickerApp extends Application {
 
         Button nullButton = new Button("Set 'null'");
         nullButton.setOnAction(evt -> timePicker.setTime(null));
-        
+
         ComboBox<Integer> stepRateBox = new ComboBox<>();
         stepRateBox.getItems().addAll(1, 5, 10, 15, 30);
         stepRateBox.valueProperty().addListener(it -> timePicker.setStepRateInMinutes(stepRateBox.getValue()));
         stepRateBox.getSelectionModel().select(Integer.valueOf(timePicker.getStepRateInMinutes())); // must be "Integer" object, not int
 
         ComboBox<LocalTime> earliestTimeBox = new ComboBox<>();
-        earliestTimeBox.getItems().addAll(LocalTime.MIN, LocalTime.of(6, 30), LocalTime.of(23, 0));
+        earliestTimeBox.getItems().addAll(LocalTime.MIN, LocalTime.of(6, 30), LocalTime.of(23, 00));
         earliestTimeBox.valueProperty().addListener(it -> timePicker.setEarliestTime(earliestTimeBox.getValue()));
         earliestTimeBox.getSelectionModel().select(LocalTime.MIN);
 
         ComboBox<LocalTime> latestTimeBox = new ComboBox<>();
-        latestTimeBox.getItems().addAll(LocalTime.MAX, LocalTime.of(18, 0), LocalTime.of(2, 0));
+        latestTimeBox.getItems().addAll(LocalTime.MAX, LocalTime.of(18, 00), LocalTime.of(2, 00));
         latestTimeBox.valueProperty().addListener(it -> timePicker.setLatestTime(latestTimeBox.getValue()));
         latestTimeBox.getSelectionModel().select(LocalTime.MAX);
         latestTimeBox.setConverter(new StringConverter<>() {
@@ -124,10 +115,6 @@ public class TimePickerApp extends Application {
             }
         });
 
-        ComboBox<CustomComboBox.ButtonDisplay> buttonDisplayBox = new ComboBox<>();
-        buttonDisplayBox.getItems().addAll(CustomComboBox.ButtonDisplay.values());
-        buttonDisplayBox.valueProperty().bindBidirectional(timePicker.buttonDisplayProperty());
-
         GridPane gridPane = new GridPane();
         gridPane.setHgap(10);
         gridPane.setVgap(20);
@@ -137,11 +124,7 @@ public class TimePickerApp extends Application {
         gridPane.add(new Label("Earliest time:"), 0, 1);
         gridPane.add(earliestTimeBox, 1, 1);
         gridPane.add(new Label("Latest time:"), 0, 2);
-        gridPane.add(latestTimeBox, 1, 2);
-        gridPane.add(new Label("Button Display"), 0, 3);
-        gridPane.add(buttonDisplayBox, 1, 3);
-        gridPane.add(new Label("Format"), 0, 4);
-        gridPane.add(formatComboBox, 1, 4);
+        gridPane.add(latestTimeBox, 1, 02);
 
         VBox box0 = new VBox(20, timePicker, valueLabel);
         VBox box1 = new VBox(20, datePicker, textField);
