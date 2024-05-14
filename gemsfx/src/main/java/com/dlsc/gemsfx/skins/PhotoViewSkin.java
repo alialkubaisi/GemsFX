@@ -2,9 +2,6 @@ package com.dlsc.gemsfx.skins;
 
 import com.dlsc.gemsfx.PhotoView;
 import com.dlsc.gemsfx.PhotoView.ClipShape;
-
-import java.util.function.Supplier;
-
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
@@ -27,6 +24,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+
+import java.util.function.Supplier;
 
 public class PhotoViewSkin extends SkinBase<PhotoView> {
 
@@ -104,7 +103,22 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
             imageView.effectProperty().bind(view.photoEffectProperty());
             imageView.setManaged(false);
 
-            view.photoProperty().addListener(it -> requestLayout());
+            view.photoProperty().addListener(it -> {
+                Image photo = view.getPhoto();
+                if (photo != null) {
+                    if (photo.isBackgroundLoading()) {
+                        photo.progressProperty().addListener(it2 -> {
+                            if (photo.getProgress() == 1.0) {
+                                requestLayout();
+                            }
+                        });
+                    } else {
+                        requestLayout();
+                    }
+                } else {
+                    requestLayout();
+                }
+            });
 
             setOnMousePressed(evt -> {
                 if (view.isEditable()) {
@@ -158,7 +172,18 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
 
             InvalidationListener cropListener = it -> {
                 if (view.isCreateCroppedImage()) {
-                    crop();
+                    Image photo = view.getPhoto();
+                    if (photo != null) {
+                        if (photo.isBackgroundLoading()) {
+                            photo.progressProperty().addListener(it2 -> {
+                                if (photo.getProgress() == 1.0) {
+                                    crop();
+                                }
+                            });
+                        } else {
+                            crop();
+                        }
+                    }
                 }
             };
 
@@ -166,12 +191,7 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
             view.photoZoomProperty().addListener(cropListener);
             view.photoTranslateXProperty().addListener(cropListener);
             view.photoTranslateYProperty().addListener(cropListener);
-
-            view.createCroppedImageProperty().addListener(it -> {
-                if (view.isCreateCroppedImage()) {
-                    crop();
-                }
-            });
+            view.createCroppedImageProperty().addListener(cropListener);
         }
 
         private void updateBorderShape() {
@@ -266,8 +286,8 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
             int h;
 
             if (getSkinnable().getClipShape().equals(ClipShape.CIRCLE)) {
-                x -= (circle.getRadius() * scale);
-                y -= (circle.getRadius() * scale);
+                x -= (int) (circle.getRadius() * scale);
+                y -= (int) (circle.getRadius() * scale);
                 w = (int) (circle.getRadius() * scale * 2);
                 h = (int) (circle.getRadius() * scale * 2);
             } else {
@@ -284,8 +304,10 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
             int iw = (int) Math.min(image.getWidth() - ix, w);
             int ih = (int) Math.min(image.getHeight() - iy, h);
 
-            WritableImage croppedImage = new WritableImage(reader, ix, iy, iw, ih);
-            getSkinnable().getProperties().put("cropped.image", croppedImage);
+            if (iw > 0 && ih > 0) {
+                WritableImage croppedImage = new WritableImage(reader, ix, iy, iw, ih);
+                getSkinnable().getProperties().put("cropped.image", croppedImage);
+            }
         }
 
         @Override
@@ -312,7 +334,7 @@ public class PhotoViewSkin extends SkinBase<PhotoView> {
                     sy = rectangle.getHeight() / ih;
                 }
 
-                double s = Math.min(sx, sy);
+                double s = Math.max(sx, sy);
 
                 double pw = s * iw;
                 double ph = s * ih;

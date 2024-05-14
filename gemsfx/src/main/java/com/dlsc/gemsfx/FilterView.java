@@ -4,6 +4,7 @@ import com.dlsc.gemsfx.skins.FilterViewSkin;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ListProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyListProperty;
@@ -11,6 +12,7 @@ import javafx.beans.property.ReadOnlyListWrapper;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleListProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -56,8 +58,12 @@ import java.util.function.Predicate;
  */
 public class FilterView<T> extends Control {
 
+    private final SearchTextField searchTextField = new SearchTextField();
+
     public FilterView() {
         getStyleClass().add("filter-view");
+
+        setFocusTraversable(false);
 
         InvalidationListener updatePredicateListener = (Observable it) -> {
 
@@ -107,12 +113,39 @@ public class FilterView<T> extends Control {
 
     @Override
     public String getUserAgentStylesheet() {
-        return FilterView.class.getResource("filter-view.css").toExternalForm();
+        return Objects.requireNonNull(FilterView.class.getResource("filter-view.css")).toExternalForm();
     }
 
     @Override
     protected Skin<?> createDefaultSkin() {
         return new FilterViewSkin<>(this);
+    }
+
+    /**
+     * Returns the search text field used for entering filter terms.
+     *
+     * @return the search text field
+     */
+    public final SearchTextField getSearchTextField() {
+        return searchTextField;
+    }
+
+    private final IntegerProperty scrollThreshold = new SimpleIntegerProperty(this, "scrollThreshold", 100);
+
+    public int getScrollThreshold() {
+        return scrollThreshold.get();
+    }
+
+    /**
+     * The threshold number of filters at which a ScrollPane is introduced to handle large number of elements.
+     * If the number of filters is equal to or exceeds this value, the filters will be displayed within a ScrollPane.
+     */
+    public IntegerProperty scrollThresholdProperty() {
+        return scrollThreshold;
+    }
+
+    public void setScrollThreshold(int scrollThreshold) {
+        this.scrollThreshold.set(scrollThreshold);
     }
 
     private final ObjectProperty<Label> titleLabel = new SimpleObjectProperty<>(this, "titleLabel", new Label());
@@ -397,7 +430,6 @@ public class FilterView<T> extends Control {
         return filterPredicate.getReadOnlyProperty();
     }
 
-
     /**
      * A filter group consists of a group of filters and has a name. The name
      * is displayed in the UI as part of the dropdown list that expostes the
@@ -498,6 +530,7 @@ public class FilterView<T> extends Control {
     public abstract static class Filter<T> implements Predicate<T> {
 
         private FilterGroup<T> group;
+        private boolean selected;
 
         /**
          * Constructs a new filter with the given name.
@@ -518,6 +551,29 @@ public class FilterView<T> extends Control {
          */
         public Filter(String name) {
             this(name, StringUtils.replaceEach(name, new String[]{"(", ")", "&", "_", " "}, new String[]{"", "", "and", "-", "-"}).toLowerCase());
+        }
+
+        /**
+         * Constructs a new filter with the given name, setting it to the default selected state.
+         *
+         * @param name           the name of the filter (e.g., "Male")
+         * @param selected the default selected state of the filter; {@code true} if the filter should be selected by default, {@code false} otherwise
+         */
+        public Filter(String name, boolean selected) {
+            this(name);
+            this.selected = selected;
+        }
+
+        /**
+         * Constructs a new filter with the given name and id, setting it to the default selected state.
+         *
+         * @param name           the name of the filter (e.g., "Male")
+         * @param id             the id of the filter
+         * @param selected the default selected state of the filter; {@code true} if the filter should be selected by default, {@code false} otherwise
+         */
+        public Filter(String name, String id, boolean selected) {
+            this(name, id);
+            this.selected = selected;
         }
 
         /**
@@ -573,5 +629,15 @@ public class FilterView<T> extends Control {
         public final void setId(String id) {
             this.id.set(id);
         }
+
+        /**
+         * Returns the default selected state of the filter.
+         *
+         * @return {@code true} if the filter is selected by default, {@code false} otherwise
+         */
+        public boolean isSelected() {
+            return selected;
+        }
+
     }
 }

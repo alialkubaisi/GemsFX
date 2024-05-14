@@ -1,0 +1,71 @@
+.calendar-picker {
+    -fx-padding: 0px;
+    -fx-pref-height: 2.1em;
+}
+
+.calendar-picker .popup {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 12, 0.0, 0, 8);
+}
+
+.calendar-picker > .box {
+    -fx-alignment: center;
+    -fx-spacing: 0px;
+}
+
+.calendar-picker > .box > .spacer {
+    -fx-pref-width: 0px;
+}
+
+.calendar-picker > .box > .arrow-button {
+    -fx-padding: 0.5em 0.667em 0.5em 0.833333em; /* 6 8 6 10 */
+    -fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
+    -fx-background-insets: 1 1 1 0, 1, 2;
+    -fx-background-radius: 0 3 3 0, 0 2 2 0, 0 1 1 0;
+    -fx-cursor: default;
+}
+
+.calendar-picker:left > .box > .arrow-button {
+    -fx-padding: 0.5em 0.833333em 0.5em 0.667em; /* 6 10 6 8 */
+    -fx-background-insets: 1 0 1 1, 1, 2;
+    -fx-background-radius: 3 0 0 3, 2 0 0 2, 1 0 0 1;
+}
+
+.calendar-picker:button-only > .box > .arrow-button {
+    -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
+    -fx-background-insets: 0 0 -1 0, 0, 1, 1;
+    -fx-background-radius: 5, 5, 4, 3;
+    -fx-padding: 0.5em 0.75em; /* 6 9 6 9 */
+}
+
+.calendar-picker > .box > .arrow-button > .arrow {
+    -fx-shape: "M0,0v9h9V0H0z M2,8H1V7h1V8z M2,6H1V5h1V6z M2,4H1V3h1V4z M4,8H3V7h1V8z M4,6H3V5h1V6z M4,4H3V3h1V4z M6,8H5V7h1V8z M6,6H5 V5h1V6z M6,4H5V3h1V4z M8,8H7V7h1V8z M8,6H7V5h1V6z M8,4H7V3h1V4z";
+    -fx-background-color: -fx-mark-highlight-color, -fx-mark-color;
+    -fx-background-insets: 1 0 -1 0, 0;
+    -fx-padding: 0.416667em 0.416667em 0.333333em 0.333333em; /* 5 5 4 4 */
+    -fx-scale-shape: false;
+}
+
+.calendar-picker:focused > .box > .arrow-button {
+    -fx-background-color: -fx-focus-color, -fx-inner-border, -fx-body-color, -fx-faint-focus-color, -fx-body-color;
+    -fx-background-insets: 0, 1, 2, 1, 2.6;
+    -fx-background-radius: 0 2 2 0, 0 1 1 0, 0 1 1 0, 0 1 1 0;
+    -fx-border-color: -fx-faint-focus-color;
+    -fx-border-width: 0 0 0 1;
+    -fx-border-insets: 0 0 0 -1;
+}
+
+.calendar-picker:left:focused > .box > .arrow-button {
+    -fx-background-radius: 2 0 0 2, 1 0 0 1, 1 0 0 1, 1 0 0 1;
+    -fx-border-width: 0 1 0 0;
+    -fx-border-insets: 0 -1 0 0;
+}
+
+.calendar-picker:button-only:focused > .box > .arrow-button {
+    -fx-background-radius: 2, 1, 1, 1;
+    -fx-border-width: 1;
+    -fx-border-insets: -1;
+}
+
+.calendar-picker > .box > .text-field {
+    -fx-background-color: null;
+}

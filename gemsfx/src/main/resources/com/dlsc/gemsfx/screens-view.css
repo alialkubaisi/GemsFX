@@ -1,0 +1,41 @@
+.screens-view {
+    -fx-background-color: lightgrey;
+    -fx-pref-width: 600;
+    -fx-pref-height: 400;
+}
+
+.screens-view .container {
+}
+
+.screens-view .screen {
+    -fx-background-color: transparent;
+}
+
+.screens-view .screen.no-wallpaper {
+    -fx-background-color: lightblue;
+}
+
+.screens-view .screen .label {
+    -fx-font-size: 128;
+    -fx-opacity: .8;
+}
+
+.screens-view .glass {
+    -fx-background-color: radial-gradient(radius 75%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+}
+
+.screens-view .visible-area {
+    -fx-background-color: white;
+    -fx-opacity: .75;
+}
+
+.screens-view .window {
+    -fx-background-color: rgba(255, 255, 255, .7);
+    -fx-border-width: 5px;
+    -fx-border-color: black;
+    -fx-border-style: dashed;
+}
+
+.screens-view .window .label {
+    -fx-font-size: 64;
+}

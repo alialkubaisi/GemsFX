@@ -1,12 +1,8 @@
 package com.dlsc.gemsfx.demo;
 
+import com.dlsc.gemsfx.CustomComboBox;
 import com.dlsc.gemsfx.DurationPicker;
 import com.dlsc.gemsfx.DurationPicker.LabelType;
-
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
-
 import fr.brouillard.oss.cssfx.CSSFX;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
@@ -27,6 +23,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class DurationPickerApp extends Application {
 
@@ -61,8 +61,11 @@ public class DurationPickerApp extends Application {
         CheckBox showPopupButtonBox = new CheckBox("Show popup button");
         showPopupButtonBox.selectedProperty().bindBidirectional(durationPicker.showPopupTriggerButtonProperty());
 
-        Button showOrHidePopupButton = new Button("Show Popup");
-        showOrHidePopupButton.setOnAction(evt -> durationPicker.show());
+        Button showPopupButton = new Button("Show Popup");
+        showPopupButton.setOnAction(evt -> durationPicker.show());
+
+        Button hidePopupButton = new Button("Hide Popup");
+        hidePopupButton.setOnAction(evt -> durationPicker.hide());
 
         CheckBox fillDigitsCheckBox = new CheckBox("Fill digits with leading zeros");
         fillDigitsCheckBox.selectedProperty().bindBidirectional(durationPicker.fillDigitsProperty());
@@ -139,7 +142,7 @@ public class DurationPickerApp extends Application {
                     case 3:
                         return "Minutes, Seconds, Millis";
                     default:
-                       return "";
+                        return "";
                 }
             }
 
@@ -190,6 +193,10 @@ public class DurationPickerApp extends Application {
         minimumDurationBox.setConverter(converter);
         maximumDurationBox.setConverter(converter);
 
+        ComboBox<CustomComboBox.ButtonDisplay> buttonDisplayBox = new ComboBox<>();
+        buttonDisplayBox.getItems().addAll(CustomComboBox.ButtonDisplay.values());
+        buttonDisplayBox.valueProperty().bindBidirectional(durationPicker.buttonDisplayProperty());
+
         GridPane gridPane = new GridPane();
         gridPane.setHgap(10);
         gridPane.setVgap(20);
@@ -199,14 +206,16 @@ public class DurationPickerApp extends Application {
         gridPane.add(new Label("Minimum duration:"), 0, 1);
         gridPane.add(minimumDurationBox, 1, 1);
         gridPane.add(new Label("Maximum duration:"), 0, 2);
-        gridPane.add(maximumDurationBox, 1, 02);
+        gridPane.add(maximumDurationBox, 1, 2);
         gridPane.add(new Label("Labels:"), 0, 3);
         gridPane.add(labelTypeBox, 1, 3);
+        gridPane.add(new Label("Button Display:"), 0, 4);
+        gridPane.add(buttonDisplayBox, 1, 4);
 
         VBox box0 = new VBox(20, durationPicker, valueLabel);
         VBox box1 = new VBox(20, datePicker, textField);
         VBox box2 = new VBox(20, fullWidth, showPopupButtonBox, fillDigitsCheckBox, linkFieldsBox, rollOverBox, gridPane);
-        HBox box3 = new HBox(20, showOrHidePopupButton, zeroButton, nullButton);
+        HBox box3 = new HBox(20, showPopupButton, hidePopupButton, zeroButton, nullButton);
 
         box1.setStyle("-fx-padding: 20px; -fx-background-color: white; -fx-background-radius: 2px; -fx-border-color: gray; -fx-border-radius: 2px;");
         box2.setStyle(box1.getStyle()); // same style

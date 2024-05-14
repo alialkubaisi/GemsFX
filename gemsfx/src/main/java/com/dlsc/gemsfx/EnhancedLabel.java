@@ -1,7 +1,5 @@
 package com.dlsc.gemsfx;
 
-import java.util.function.Supplier;
-
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -9,6 +7,8 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.css.PseudoClass;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -19,6 +19,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseButton;
+
+import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * An enhanced label that allows for selecting the (whole) label and copying to the clipboard
@@ -44,15 +47,13 @@ public class EnhancedLabel extends Label {
 
     @Override
     public String getUserAgentStylesheet() {
-        return EnhancedLabel.class.getResource("enhanced-label.css").toExternalForm();
+        return Objects.requireNonNull(EnhancedLabel.class.getResource("enhanced-label.css")).toExternalForm();
     }
 
     private void init() {
         getStyleClass().add("enhanced-label");
 
         setFocusTraversable(true);
-
-        selectedProperty().addListener(it -> pseudoClassStateChanged(SELECTED_PSEUDO_CLASS, isSelected()));
 
         KeyCombination copy = new KeyCodeCombination(KeyCode.C, KeyCombination.SHORTCUT_DOWN);
 
@@ -69,6 +70,7 @@ public class EnhancedLabel extends Label {
         });
 
         selectedProperty().addListener(it -> {
+            pseudoClassStateChanged(SELECTED_PSEUDO_CLASS, isSelected());
             if (isSelected() && !isFocused()) {
                 requestFocus();
             }
@@ -82,7 +84,12 @@ public class EnhancedLabel extends Label {
 
         MenuItem copyItem = new MenuItem();
         copyItem.textProperty().bind(copyMenuItemTextProperty());
-        copyItem.setOnAction(evt -> copyText());
+        copyItem.setOnAction(event -> {
+            EventHandler<ActionEvent> handler = getOnCopyAction();
+            if (handler != null) {
+                handler.handle(event);
+            }
+        });
 
         ContextMenu contextMenu = new ContextMenu();
         contextMenu.getItems().add(copyItem);
@@ -97,6 +104,35 @@ public class EnhancedLabel extends Label {
         ClipboardContent content = new ClipboardContent();
         content.putString(getCopyContentSupplier().get());
         clipboard.setContent(content);
+    }
+
+    private void copyText(ActionEvent actionEvent) {
+        copyText();
+        actionEvent.consume();
+    }
+
+    private ObjectProperty<EventHandler<ActionEvent>> onCopyAction;
+
+    public final void setOnCopyAction(EventHandler<ActionEvent> value) {
+        onCopyActionProperty().set(value);
+    }
+
+    public final EventHandler<ActionEvent> getOnCopyAction() {
+        return onCopyAction == null ? this::copyText : onCopyAction.get();
+    }
+
+    /**
+     * The action that is executed when the user copies the label text. The default action
+     * is to copy the text to the clipboard. This action can be overridden by setting a new
+     * event handler.
+     *
+     * @return the action that is executed when the user copies the label text
+     */
+    public final ObjectProperty<EventHandler<ActionEvent>> onCopyActionProperty() {
+        if (onCopyAction == null) {
+            onCopyAction = new SimpleObjectProperty<>(this, "onCopyAction", this::copyText);
+        }
+        return onCopyAction;
     }
 
     private final BooleanProperty selected = new SimpleBooleanProperty(this, "selected");

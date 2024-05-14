@@ -5,7 +5,6 @@
       "name": "Expanding Text Area",
       "desc": "A text area that grows by itself to fit its content.",
       "project": "GemsFX",
-      "preview": "/preview-expanding-text-area.png",
       "classname": "com.dlsc.gemsfx.demo.ExpandingTextAreaApp"
     },
     {
@@ -63,6 +62,70 @@
       "project": "GemsFX",
       "preview": "/preview-filterview.png",
       "classname": "com.dlsc.gemsfx.demo.FilterViewApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Search Text Field",
+      "desc": "A regular text input field styled for search use cases.",
+      "project": "GemsFX",
+      "preview": "/preview-search-text-field.png",
+      "classname": "com.dlsc.gemsfx.demo.SearchTextFieldApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Search Field",
+      "desc": "An autocompletion text input field.",
+      "project": "GemsFX",
+      "preview": "/preview-search-field.png",
+      "classname": "com.dlsc.gemsfx.demo.SearchFieldApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Tags Field",
+      "desc": "An autocompletion tags input field.",
+      "project": "GemsFX",
+      "preview": "/preview-tags-field.png",
+      "classname": "com.dlsc.gemsfx.demo.TagsFieldApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Info Center / Notifications",
+      "desc": "A notification framework.",
+      "project": "GemsFX",
+      "preview": "/preview-info-center.png",
+      "classname": "com.dlsc.gemsfx.demo.InfoCenterApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Strip View",
+      "desc": "A horizontal layout container with clipping and scrolling support.",
+      "project": "GemsFX",
+      "preview": "/preview-strip-view.png",
+      "classname": "com.dlsc.gemsfx.demo.StripViewApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Year Month Picker",
+      "desc": "A picker for selecting a month of a year",
+      "project": "GemsFX",
+      "preview": "/preview-year-month-picker.png",
+      "classname": "com.dlsc.gemsfx.demo.YearMonthPickerApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Calendar View",
+      "desc": "A calendar view showing a single month",
+      "project": "GemsFX",
+      "preview": "/preview-calendar-view.png",
+      "classname": "com.dlsc.gemsfx.demo.CalendarViewApp"
+    },
+    {
+      "category": "gemsfx",
+      "name": "Calendar View Picker",
+      "desc": "A picker for picking a date (using GemsFX CalendarView)",
+      "project": "GemsFX",
+      "preview": "/preview-calendar-picker.png",
+      "classname": "com.dlsc.gemsfx.demo.CalendarPickerApp"
     }
   ]
 }

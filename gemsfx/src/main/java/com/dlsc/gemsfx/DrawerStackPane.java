@@ -1,18 +1,11 @@
 package com.dlsc.gemsfx;
 
-import javafx.animation.FadeTransition;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
+import javafx.animation.*;
+import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import javafx.beans.property.*;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.CacheHint;
 import javafx.scene.Cursor;
@@ -20,16 +13,18 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.ToolBar;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -54,15 +49,17 @@ public class DrawerStackPane extends StackPane {
 
     private static final Logger LOG = Logger.getLogger(DrawerStackPane.class.getName());
 
-    private String preferenceKey = "drawer.stackpane";
+    private static final int MAXIMIZE = -1;
 
-    private StackPane glassPane;
+    private GlassPane glassPane;
 
     private VBox drawer;
 
     private double startY;
 
     private HBox headerBox;
+
+    private Timeline timeline;
 
     /**
      * Constructs a new drawer stack pane.
@@ -93,6 +90,15 @@ public class DrawerStackPane extends StackPane {
         drawer.setManaged(false);
 
         glassPane = new GlassPane();
+        glassPane.fadeInOutDurationProperty().bind(animationDurationProperty());
+        glassPane.fadeInOutProperty().bind(animateDrawerProperty());
+        glassPane.setOnMouseClicked(evt -> {
+            if (isAutoHide() && evt.getButton().equals(MouseButton.PRIMARY) && !evt.isConsumed()) {
+                setShowDrawer(false);
+            }
+        });
+
+        glassPane.hideProperty().bind(showDrawer.not());
 
         getChildren().addAll(glassPane, drawer);
 
@@ -145,6 +151,8 @@ public class DrawerStackPane extends StackPane {
         setDrawerHeight(loadDrawerHeightFromUserPreferences());
 
         showDrawerProperty().addListener(it -> {
+            stopCurrentlyRunningTimeline();
+
             if (isShowDrawer()) {
                 showDrawer();
             } else {
@@ -152,7 +160,11 @@ public class DrawerStackPane extends StackPane {
             }
         });
 
-        drawerHeightProperty().addListener(it -> requestLayout());
+        InvalidationListener layoutListener = it -> requestLayout();
+        drawerHeightProperty().addListener(layoutListener);
+        preferredDrawerWidthProperty().addListener(layoutListener);
+        topPaddingProperty().addListener(layoutListener);
+        sidePaddingProperty().addListener(layoutListener);
 
         minDrawerHeight.addListener(it -> {
             if (getMinDrawerHeight() < 0) {
@@ -166,6 +178,18 @@ public class DrawerStackPane extends StackPane {
             }
         });
 
+        sidePadding.addListener(it -> {
+            if (getSidePadding() < 0) {
+                throw new IllegalArgumentException("side padding must be larger or equal to 0 but was " + getSidePadding());
+            }
+        });
+
+        topPadding.addListener(it -> {
+            if (getTopPadding() < 0) {
+                throw new IllegalArgumentException("top padding must be larger or equal to 0 but was " + getTopPadding());
+            }
+        });
+
         addEventFilter(KeyEvent.KEY_PRESSED, evt -> {
             if (isShowDrawer() && evt.getCode().equals(KeyCode.ESCAPE)) {
                 setShowDrawer(false);
@@ -176,7 +200,7 @@ public class DrawerStackPane extends StackPane {
 
     @Override
     public String getUserAgentStylesheet() {
-        return DrawerStackPane.class.getResource("drawer-stackpane.css").toExternalForm();
+        return Objects.requireNonNull(DrawerStackPane.class.getResource("drawer-stackpane.css")).toExternalForm();
     }
 
     // fade in / out support
@@ -222,49 +246,15 @@ public class DrawerStackPane extends StackPane {
         this.autoHide.set(autoHide);
     }
 
-    class GlassPane extends StackPane {
+    private final StringProperty preferencesKey = new SimpleStringProperty(this, "preferencesKey", "drawer.stackpane");
 
-        public GlassPane() {
-            getStyleClass().add("glass-pane");
-
-            setVisible(false);
-            setMouseTransparent(false);
-            setOnMouseClicked(evt -> {
-                if (isAutoHide() && evt.getButton().equals(MouseButton.PRIMARY) && !evt.isConsumed()) {
-                    setShowDrawer(false);
-                }
-            });
-
-            hide.bind(showDrawer.not());
-
-            hide.addListener(it -> {
-
-                if (isFadeInOut()) {
-                    setVisible(true);
-
-                    FadeTransition fadeTransition = new FadeTransition();
-                    fadeTransition.setDuration(Duration.millis(200));
-                    fadeTransition.setNode(this);
-                    fadeTransition.setFromValue(isHide() ? .5 : 0);
-                    fadeTransition.setToValue(isHide() ? 0 : .5);
-                    fadeTransition.setOnFinished(evt -> {
-                        if (isHide()) {
-                            setVisible(false);
-                        }
-                    });
-                    fadeTransition.play();
-                } else {
-                    setOpacity(isHide() ? 0 : .5);
-                    setVisible(!isHide());
-                }
-            });
-        }
-
-        private final BooleanProperty hide = new SimpleBooleanProperty(this, "hide");
-
-        public final boolean isHide() {
-            return hide.get();
-        }
+    /**
+     * Stores the key used to store the drawer height via the preferences store.
+     *
+     * @return the preferences key property
+     */
+    public final StringProperty preferencesKeyProperty() {
+        return preferencesKey;
     }
 
     /**
@@ -273,8 +263,8 @@ public class DrawerStackPane extends StackPane {
      *
      * @param key the preferences key
      */
-    public void setPreferencesKey(String key) {
-        preferenceKey = key;
+    public final void setPreferencesKey(String key) {
+        preferencesKey.set(key);
     }
 
     /**
@@ -283,8 +273,8 @@ public class DrawerStackPane extends StackPane {
      *
      * @return the preferences key
      */
-    public String getPreferencesKey() {
-        return preferenceKey;
+    public final String getPreferencesKey() {
+        return preferencesKey.get();
     }
 
     // max drawer height support
@@ -319,7 +309,8 @@ public class DrawerStackPane extends StackPane {
 
     /**
      * The minimum drawer height, a value between 0 and 1 with 0 meaning that the drawer can be made
-     * completely invisible.
+     * completely invisible. Even with a value larger than 0 the drawer can be made to hide by the user
+     * by continuing to drag below the drawer.
      *
      * @return the minimum drawer height (value between 0 and 1)
      */
@@ -335,23 +326,34 @@ public class DrawerStackPane extends StackPane {
     protected void layoutChildren() {
         super.layoutChildren();
 
-        double availableHeight = getHeight() - 20;
-        double maxDrawerWidth = getWidth() - 100;
-        double drawerWidth = getPreferredDrawerWidth() != -1 ? Math.min(getPreferredDrawerWidth(), maxDrawerWidth) : maxDrawerWidth;
+        double availableHeight = getHeight() - getTopPadding();
+        double maxDrawerWidth = getWidth() - 2 * getSidePadding();
+        double drawerWidth;
 
-        drawer.resizeRelocate((getWidth() - drawerWidth) / 2, getHeight() - getDrawerHeight() * availableHeight, drawerWidth, availableHeight * getDrawerHeight());
+        if (getPreferredDrawerWidth() == MAXIMIZE) {
+            drawerWidth = maxDrawerWidth;
+        } else {
+            drawerWidth = Math.min(getPreferredDrawerWidth(), maxDrawerWidth);
+        }
+
+        double drawerHeight = getDrawerHeight();
+
+        double x = (getWidth() - drawerWidth) / 2;
+        double y = getHeight() - drawerHeight * availableHeight;
+
+        drawer.resizeRelocate(x, y, drawerWidth, availableHeight * drawerHeight);
     }
 
     private VBox createContainer() {
         StackPane dragHandle = createDragHandle();
-        Button closeButton = createCloseButton();
         Label titleLabel = createTitleLabel();
+        ToolBar toolBar = createToolBar();
 
         titleLabel.setMouseTransparent(true);
 
         StackPane.setAlignment(dragHandle, Pos.CENTER);
 
-        headerBox = new HBox(titleLabel, closeButton);
+        headerBox = new HBox(titleLabel, toolBar);
         headerBox.getStyleClass().add("header");
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setFillHeight(false);
@@ -370,12 +372,35 @@ public class DrawerStackPane extends StackPane {
         return box;
     }
 
-    private Button createCloseButton() {
+    private final ListProperty<Node> toolbarItems = new SimpleListProperty<>(this, "toolbarItems", FXCollections.observableArrayList());
+
+    public final ObservableList<Node> getToolbarItems() {
+        return toolbarItems.get();
+    }
+
+    /**
+     * The list of items to display in the toolbar.
+     *
+     * @return the toolbar items / toolbar buttons
+     */
+    public final ListProperty<Node> toolbarItemsProperty() {
+        return toolbarItems;
+    }
+
+    public final void setToolbarItems(ObservableList<Node> items) {
+        toolbarItems.set(items);
+    }
+
+    private ToolBar createToolBar() {
+        ToolBar toolBar = new ToolBar();
+        Bindings.bindContent(toolBar.getItems(), toolbarItemsProperty());
+
         Button closeButton = new Button("Close");
         closeButton.setOnAction(evt -> setShowDrawer(false));
         closeButton.getStyleClass().add("close-button");
+        getToolbarItems().add(closeButton);
 
-        return closeButton;
+        return toolBar;
     }
 
     private Label createTitleLabel() {
@@ -548,15 +573,16 @@ public class DrawerStackPane extends StackPane {
 
     // preferred drawer width support
 
-    private final DoubleProperty preferredDrawerWidth = new SimpleDoubleProperty(this, "preferredDrawerWidth", Region.USE_COMPUTED_SIZE);
+    private final DoubleProperty preferredDrawerWidth = new SimpleDoubleProperty(this, "preferredDrawerWidth", MAXIMIZE);
 
     public final double getPreferredDrawerWidth() {
         return preferredDrawerWidth.get();
     }
 
     /**
-     * Stores the preferred width of the drawer. Normally this value is is equal to
-     * {@link Region#USE_COMPUTED_SIZE}.
+     * Stores the preferred width of the drawer. Normally this value is equal to -1, which indicates that the
+     * drawer should use the entire available width. A value larger than -1 will make the pane use that value
+     * for the width of the drawer.
      *
      * @return the preferred drawer width
      */
@@ -566,6 +592,46 @@ public class DrawerStackPane extends StackPane {
 
     public final void setPreferredDrawerWidth(double preferredDrawerWidth) {
         this.preferredDrawerWidth.set(preferredDrawerWidth);
+    }
+
+    private final DoubleProperty topPadding = new SimpleDoubleProperty(this, "topPadding", 20);
+
+    public final double getTopPadding() {
+        return topPadding.get();
+    }
+
+    /**
+     * Specifies a value used for padding at the top of the drawer. This value will
+     * always be enforced,.
+     *
+     * @return the padding used for the top of the drawer
+     */
+    public final DoubleProperty topPaddingProperty() {
+        return topPadding;
+    }
+
+    public final void setTopPadding(double topPadding) {
+        this.topPadding.set(topPadding);
+    }
+
+    private final DoubleProperty sidePadding = new SimpleDoubleProperty(this, "sidePadding", 100);
+
+    public final double getSidePadding() {
+        return sidePadding.get();
+    }
+
+    /**
+     * Specifies a value used for padding to the left and the right of the drawer. This value will
+     * always be enforced, not matter what the preferred width of the drawer content is.
+     *
+     * @return the padding used for the left and right side next to the drawer
+     */
+    public final DoubleProperty sidePaddingProperty() {
+        return sidePadding;
+    }
+
+    public final void setSidePadding(double sidePadding) {
+        this.sidePadding.set(sidePadding);
     }
 
     // drawer animation support
@@ -595,7 +661,7 @@ public class DrawerStackPane extends StackPane {
     private final DoubleProperty drawerHeight = new SimpleDoubleProperty(this, "drawerHeight");
 
     public final double getDrawerHeight() {
-        return Math.min(1, Math.max(.1, drawerHeight.get()));
+        return Math.min(1, Math.max(0, drawerHeight.get()));
     }
 
     /**
@@ -611,6 +677,25 @@ public class DrawerStackPane extends StackPane {
         this.drawerHeight.set(drawerHeight);
     }
 
+    private final ObjectProperty<Duration> animationDuration = new SimpleObjectProperty<>(this, "animationDuration", Duration.millis(250));
+
+    public final Duration getAnimationDuration() {
+        return animationDuration.get();
+    }
+
+    /**
+     * The duration it takes to show / hide the drawer.
+     *
+     * @return the animation duration
+     */
+    public final ObjectProperty<Duration> animationDurationProperty() {
+        return animationDuration;
+    }
+
+    public final void setAnimationDuration(Duration animationDuration) {
+        this.animationDuration.set(animationDuration);
+    }
+
     private void showDrawer() {
         glassPane.toFront();
 
@@ -619,15 +704,22 @@ public class DrawerStackPane extends StackPane {
         drawer.toFront();
         drawer.setVisible(true);
 
-        if (isAnimateDrawer()) {
+        if (isAnimateDrawer() && getAnimationDuration() != null && getAnimationDuration().greaterThan(Duration.ZERO)) {
             setDrawerHeight(0);
-            KeyValue keyValue = new KeyValue(drawerHeightProperty(), loadDrawerHeightFromUserPreferences());
-            KeyFrame keyFrame = new KeyFrame(Duration.millis(100), keyValue);
-            Timeline timeline = new Timeline(keyFrame);
+            KeyValue keyValue = new KeyValue(drawerHeightProperty(), loadDrawerHeightFromUserPreferences(), Interpolator.EASE_BOTH);
+            KeyFrame keyFrame = new KeyFrame(getAnimationDuration(), keyValue);
+            timeline = new Timeline(keyFrame);
             timeline.setOnFinished(evt -> drawer.setCache(false));
             timeline.play();
         } else {
             setDrawerHeight(loadDrawerHeightFromUserPreferences());
+        }
+    }
+
+    private void stopCurrentlyRunningTimeline() {
+        if (timeline != null && timeline.getStatus().equals(Animation.Status.RUNNING)) {
+            // the timeline used for the last show / hide might still be running
+            timeline.stop();
         }
     }
 
@@ -654,9 +746,9 @@ public class DrawerStackPane extends StackPane {
 
     private void hideDrawer() {
         if (isAnimateDrawer()) {
-            KeyValue keyValue = new KeyValue(drawerHeightProperty(), 0);
-            KeyFrame keyFrame = new KeyFrame(Duration.millis(100), keyValue);
-            Timeline timeline = new Timeline(keyFrame);
+            KeyValue keyValue = new KeyValue(drawerHeightProperty(), 0, Interpolator.EASE_BOTH);
+            KeyFrame keyFrame = new KeyFrame(getAnimationDuration(), keyValue);
+            timeline = new Timeline(keyFrame);
             timeline.setOnFinished(evt -> postHiding());
             timeline.play();
         } else {
