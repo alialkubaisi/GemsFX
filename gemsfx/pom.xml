@@ -30,7 +30,7 @@
     </scm>
 
     <properties>
-        <javafx.version>14.0.1</javafx.version>
+        <javafx.version>22</javafx.version>
         <ikonli.version>12.2.0</ikonli.version>
     </properties>
 
