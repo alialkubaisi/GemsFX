@@ -23,9 +23,16 @@ public abstract class DigitsField extends TimeField {
     private TimeField nextField;
 
     private TimeField previousField;
+    
+    private int numberOfDigits;
 
     public DigitsField(TimePicker timePicker, boolean fillDigits) {
+        this(timePicker, fillDigits, 2);
+    }
+    
+    public DigitsField(TimePicker timePicker, boolean fillDigits, int numberOfDigits) {
         super(timePicker);
+        this.numberOfDigits = numberOfDigits;
 
         getStyleClass().add("digits-field");
 
@@ -67,6 +74,12 @@ public abstract class DigitsField extends TimeField {
                 }
                 return "--";
             } else if (value < 10 && (fillDigits || getTypedText().length() > 1)) {
+                if (numberOfDigits == 2) {
+                    return "0" + value;
+                } else if (numberOfDigits == 3) {
+                    return "00" + value;
+                }
+            } else if (value < 100 && numberOfDigits == 3 && (fillDigits || getTypedText().length() > 1)) {
                 return "0" + value;
             }
 
@@ -83,11 +96,6 @@ public abstract class DigitsField extends TimeField {
                     setTypedText(text);
                 }
             } else {
-                if (getValue() == null) {
-                    Integer minimumValue = getMinimumValue();
-                    setValue(minimumValue);
-                }
-
                 constrainValue();
             }
         });
@@ -116,13 +124,13 @@ public abstract class DigitsField extends TimeField {
 
                 if (handled) {
 
-                    if ("".equals(typedText) || getTypedText().length() == 0) {
+                    if (StringUtils.isBlank(typedText.getValueSafe()) || typedText.getValueSafe().isEmpty()) {
                         setValue(null);
                     } else {
                         setValue(Integer.parseInt(getTypedText()));
                     }
 
-                    if (getTypedText().length() == 2 && nextField != null) {
+                    if (getTypedText().length() == numberOfDigits && nextField != null) {
                         nextField.requestFocus();
                     }
                 }
@@ -147,7 +155,7 @@ public abstract class DigitsField extends TimeField {
     }
 
     private void handleDigit(KeyEvent evt) {
-        if (getTypedText().length() == 2) {
+        if (getTypedText().length() == numberOfDigits) {
             setTypedText("");
         }
 

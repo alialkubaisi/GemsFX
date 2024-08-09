@@ -3,9 +3,6 @@ package com.dlsc.gemsfx.demo;
 import com.dlsc.gemsfx.FilterView;
 import com.dlsc.gemsfx.FilterView.Filter;
 import com.dlsc.gemsfx.FilterView.FilterGroup;
-
-import java.time.LocalDate;
-
 import fr.brouillard.oss.cssfx.CSSFX;
 import javafx.application.Application;
 import javafx.collections.transformation.SortedList;
@@ -17,6 +14,8 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
+import java.time.LocalDate;
 
 public class FilterViewApp extends Application {
 
@@ -37,26 +36,20 @@ public class FilterViewApp extends Application {
         firstNameGroup.getFilters().add(new Filter<>("Steve or Jennifer") {
             @Override
             public boolean test(Person person) {
-                switch (person.getFirstName()) {
-                    case "Steve":
-                    case "Jennifer":
-                        return true;
-                    default:
-                        return false;
-                }
+                return switch (person.getFirstName()) {
+                    case "Steve", "Jennifer" -> true;
+                    default -> false;
+                };
             }
         });
 
         firstNameGroup.getFilters().add(new Filter<>("Paul, Eric") {
             @Override
             public boolean test(Person person) {
-                switch (person.getFirstName()) {
-                    case "Paul":
-                    case "Eric":
-                        return true;
-                    default:
-                        return false;
-                }
+                return switch (person.getFirstName()) {
+                    case "Paul", "Eric" -> true;
+                    default -> false;
+                };
             }
         });
 
@@ -78,6 +71,16 @@ public class FilterViewApp extends Application {
             @Override
             public boolean test(Person person) {
                 return person.getLastName().equals("Smith");
+            }
+        });
+
+        birthdayGroup.getFilters().add(new Filter<>("1900 - 2100", true) {
+            @Override
+            public boolean test(Person person) {
+                if (person.getBirthday().getYear() < 1900) {
+                    return false;
+                }
+                return person.getBirthday().getYear() <= 2100;
             }
         });
 
@@ -176,7 +179,8 @@ public class FilterViewApp extends Application {
         CSSFX.start();
     }
 
-    public class Person {
+    public static class Person {
+
         private String firstName;
         private String lastName;
         private LocalDate birthday;

@@ -3,6 +3,7 @@ package com.dlsc.gemsfx;
 import com.dlsc.gemsfx.skins.TimePickerSkin;
 
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import javafx.beans.property.BooleanProperty;
@@ -38,10 +39,19 @@ public class TimePicker extends Control {
     }
 
     /**
+     * An enum for supported time units. See {@link #formatProperty()}
+     */
+    public enum Format {
+        HOURS_MINUTES,
+        HOURS_MINUTES_SECONDS,
+        HOURS_MINUTES_SECONDS_MILLIS
+    }
+
+    /**
      * Constructs a new time picker.
      */
     public TimePicker() {
-        getStyleClass().addAll("time-picker", "text-input");
+        getStyleClass().setAll("time-picker", "text-input");
 
         setFocusTraversable(false);
 
@@ -183,7 +193,7 @@ public class TimePicker extends Control {
 
     @Override
     public String getUserAgentStylesheet() {
-        return TimePicker.class.getResource("time-picker.css").toExternalForm();
+        return Objects.requireNonNull(TimePicker.class.getResource("time-picker.css")).toExternalForm();
     }
 
     private final ObjectProperty<LocalTime> earliestTime = new SimpleObjectProperty<>(this, "earliestTime", LocalTime.MIN);
@@ -246,7 +256,7 @@ public class TimePicker extends Control {
 
     private final BooleanProperty showPopupTriggerButton = new SimpleBooleanProperty(this, "showPopupTriggerButton", true);
 
-    public final boolean getShowPopupTriggerButton() {
+    public final boolean isShowPopupTriggerButton() {
         return showPopupTriggerButton.get();
     }
 
@@ -490,4 +500,63 @@ public class TimePicker extends Control {
     public final void setOnShowPopup(Consumer<TimePicker> onShowPopup) {
         this.onShowPopup.set(onShowPopup);
     }
-}
+
+    private final ObjectProperty<Format> format = new SimpleObjectProperty<>(this, "format", Format.HOURS_MINUTES);
+
+    /**
+     * The format used by the picker, e.g. "hours and minutes", or "hours, minutes, and seconds".
+     *
+     * @return the time unit
+     */
+    public final ObjectProperty<Format> formatProperty() {
+        return format;
+    }
+
+    public final Format getFormat() {
+        return format.get();
+    }
+
+    public final void setFormat(Format timeUnit) {
+        this.format.set(timeUnit);
+    }
+
+    private final ObjectProperty<Node> minutesSeparator = new SimpleObjectProperty<>(this, "minuteSeparator");
+
+    public final Node getMinutesSeparator() {
+        return minutesSeparator.get();
+    }
+
+    /**
+     * The node that will be placed between the minutes and the seconds field. The
+     * default separator is a label with text ":".
+     *
+     * @return a node used as a hoursSeparator
+     */
+    public final ObjectProperty<Node> minutesSeparatorProperty() {
+        return minutesSeparator;
+    }
+
+    public final void setMinutesSeparator(Node separator) {
+        this.minutesSeparator.set(separator);
+    }
+
+    private final ObjectProperty<Node> secondsSeparator = new SimpleObjectProperty<>(this, "secondsSeparator");
+
+    public final Node getSecondsSeparator() {
+        return secondsSeparator.get();
+    }
+
+    /**
+     * The node that will be placed between the seconds and the milliseconds field. The
+     * default separator is a label with text ".".
+     *
+     * @return a node used as a hoursSeparator
+     */
+    public final ObjectProperty<Node> secondsSeparatorProperty() {
+        return secondsSeparator;
+    }
+
+    public final void setSecondsSeparator(Node separator) {
+        this.secondsSeparator.set(separator);
+    }
+    }

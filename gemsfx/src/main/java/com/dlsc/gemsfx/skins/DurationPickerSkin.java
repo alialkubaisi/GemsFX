@@ -1,96 +1,111 @@
 package com.dlsc.gemsfx.skins;
 
+import com.dlsc.gemsfx.CustomComboBox;
 import com.dlsc.gemsfx.DurationPicker;
-
+import com.dlsc.gemsfx.Spacer;
+import javafx.beans.InvalidationListener;
+import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.util.Callback;
+import javafx.util.Pair;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-import javafx.beans.InvalidationListener;
-import javafx.collections.ObservableList;
-import javafx.geometry.Bounds;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.SkinBase;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.util.Callback;
-import javafx.util.Pair;
+public class DurationPickerSkin extends ToggleVisibilityComboBoxSkin<DurationPicker> {
 
-public class DurationPickerSkin extends SkinBase<DurationPicker> {
-
+    private final HBox box;
+    private final Spacer spacer;
+    private final Button editButton;
     private final HBox innerBox = new HBox();
-    private final DurationPickerPopup popup;
     private final List<DurationUnitField> durationUnitFields = new ArrayList<>();
+
+    private Node popupContent;
 
     public DurationPickerSkin(DurationPicker picker) {
         super(picker);
 
-        Button editButton = new Button();
+        editButton = new Button();
         editButton.getStyleClass().add("edit-button");
-        editButton.setOnAction(evt -> picker.getOnShowPopup().accept(picker));
+        editButton.addEventHandler(MouseEvent.MOUSE_ENTERED, this::mouseEntered);
+        editButton.addEventHandler(MouseEvent.MOUSE_EXITED, this::mouseExited);
+        editButton.addEventHandler(MouseEvent.MOUSE_RELEASED, this::mouseReleased);
+
         editButton.setMaxHeight(Double.MAX_VALUE);
+        editButton.setMaxWidth(Double.MAX_VALUE);
         editButton.setGraphic(new FontIcon());
         editButton.setFocusTraversable(false);
         editButton.visibleProperty().bind(picker.showPopupTriggerButtonProperty());
         editButton.managedProperty().bind(picker.showPopupTriggerButtonProperty());
 
-        popup = new DurationPickerPopup();
-        popup.durationProperty().bindBidirectional(picker.durationProperty());
-        popup.minimumDurationProperty().bind(picker.minimumDurationProperty());
-        popup.maximumDurationProperty().bind(picker.maximumDurationProperty());
-        popup.fieldsProperty().bind(picker.fieldsProperty());
-
-        picker.showingProperty().addListener(it -> {
-            if (picker.isShowing()) {
-                showPopup();
-            } else {
-                popup.hide();
-            }
-        });
-
-        popup.setOnHidden(evt -> picker.getProperties().put("TIME_PICKER_POPUP", "TIME_PICKER_POPUP"));
-        popup.addEventFilter(KeyEvent.KEY_PRESSED, evt -> {
-            if (evt.getCode().equals(KeyCode.ESCAPE)) {
-                popup.hide();
-            }
-        });
         InvalidationListener updateListener = it -> buildView();
         picker.fieldsProperty().addListener(updateListener);
 
         innerBox.getStyleClass().add("fields-box");
         innerBox.setAlignment(Pos.CENTER_LEFT);
 
-        Region spacer = new Region();
-        spacer.getStyleClass().add("spacer");
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        spacer = new Spacer();
 
-        HBox box = new HBox(innerBox, spacer, editButton);
+        box = new HBox();
         box.getStyleClass().add("box");
-
+        updateBox();
         getChildren().add(box);
 
+        registerChangeListener(picker.buttonDisplayProperty(), it -> updateBox());
         picker.separatorFactoryProperty().addListener(it -> buildView());
         buildView();
     }
 
-    private void showPopup() {
-        DurationPicker picker = getSkinnable();
-        Bounds bounds = picker.getBoundsInLocal();
-        Bounds screenBounds = picker.localToScreen(bounds);
+    private void updateBox() {
+        CustomComboBox.ButtonDisplay value = getSkinnable().getButtonDisplay();
+        switch (value) {
+            case LEFT:
+                box.getChildren().setAll(editButton, spacer, innerBox);
+                HBox.setHgrow(editButton, Priority.NEVER);
+                break;
+            case RIGHT:
+                box.getChildren().setAll(innerBox, spacer, editButton);
+                HBox.setHgrow(editButton, Priority.NEVER);
+                break;
+            case BUTTON_ONLY:
+                box.getChildren().setAll(editButton);
+                HBox.setHgrow(editButton, Priority.ALWAYS);
+                break;
+            case FIELD_ONLY:
+                box.getChildren().setAll(innerBox);
+                HBox.setHgrow(editButton, Priority.NEVER);
+                break;
+        }
+    }
 
-        int x = (int) screenBounds.getMinX();
-        int y = (int) screenBounds.getMinY();
-        int height = (int) screenBounds.getHeight();
+    @Override
+    protected Node getPopupContent() {
+        if (popupContent == null) {
+            DurationPicker skinnable = getSkinnable();
+            com.dlsc.pickerfx.DurationPicker durationPicker = new com.dlsc.pickerfx.DurationPicker() {
+                @Override
+                public String getUserAgentStylesheet() {
+                    return Objects.requireNonNull(DurationPicker.class.getResource("duration-picker.css")).toExternalForm();
+                }
+            };
+            durationPicker.valueProperty().bindBidirectional(skinnable.durationProperty());
+            durationPicker.maximumDurationProperty().bind(skinnable.maximumDurationProperty());
+            durationPicker.minimumDurationProperty().bind(skinnable.minimumDurationProperty());
+            durationPicker.fieldsProperty().bind(skinnable.fieldsProperty());
+            popupContent = new HBox(durationPicker);
+            popupContent.getStyleClass().add("popup");
+        }
 
-        popup.show(picker, x, y + height);
+        return popupContent;
     }
 
     private void buildView() {
