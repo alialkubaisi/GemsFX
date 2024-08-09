@@ -1,6 +1,5 @@
 package com.dlsc.gemsfx;
 
-import com.dlsc.gemsfx.daterange.DateRangePicker;
 import com.dlsc.gemsfx.skins.EmailFieldSkin;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
@@ -8,14 +7,13 @@ import javafx.css.*;
 import javafx.css.converter.BooleanConverter;
 import javafx.scene.control.Control;
 import javafx.scene.control.Skin;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.routines.EmailValidator;
 import org.controlsfx.control.textfield.CustomTextField;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * A specialized control for entering an email address. The control validates
@@ -28,7 +26,10 @@ public class EmailField extends Control {
 
     private static final PseudoClass VALID_PSEUDO_CLASS = PseudoClass.getPseudoClass("valid");
     private static final PseudoClass INVALID_PSEUDO_CLASS = PseudoClass.getPseudoClass("invalid");
-    private static final EmailValidator emailValidator = EmailValidator.getInstance();
+
+    // Define the email validation pattern
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6}$", Pattern.CASE_INSENSITIVE);
 
     private final CustomTextField editor = new CustomTextField() {
         @Override
@@ -50,9 +51,9 @@ public class EmailField extends Control {
 
         valid.bind(Bindings.createBooleanBinding(() -> {
             if (isRequired()) {
-                return emailValidator.isValid(getEmailAddress());
+                return isValidEmail(getEmailAddress());
             }
-            return StringUtils.isBlank(getEmailAddress()) || emailValidator.isValid(getEmailAddress());
+            return getEmailAddress() == null || getEmailAddress().isEmpty() || isValidEmail(getEmailAddress());
         }, emailAddressProperty(), requiredProperty()));
 
         updateValidPseudoClass(false);
@@ -278,5 +279,10 @@ public class EmailField extends Control {
 
     public static List<CssMetaData<? extends Styleable, ?>> getClassCssMetaData() {
         return StyleableProperties.STYLEABLES;
+    }
+
+    // Custom email validation method
+    private boolean isValidEmail(String email) {
+        return EMAIL_PATTERN.matcher(email).matches();
     }
 }
