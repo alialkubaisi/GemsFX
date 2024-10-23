@@ -1,6 +1,7 @@
 open module com.dlsc.gemsfx.demo {
     requires java.prefs;
 
+    requires com.dlsc.gemsfx;
     requires com.dlsc.pdfviewfx;
 
     requires com.fasterxml.jackson.core;
