@@ -2,6 +2,8 @@ package com.dlsc.gemsfx;
 
 import com.dlsc.gemsfx.skins.SearchFieldPopup;
 import com.dlsc.gemsfx.skins.SearchFieldSkin;
+import com.dlsc.gemsfx.util.HistoryManager;
+import com.dlsc.gemsfx.util.StringHistoryManager;
 import javafx.animation.Animation;
 import javafx.animation.RotateTransition;
 import javafx.beans.binding.Bindings;
@@ -23,6 +25,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.css.PseudoClass;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
@@ -37,6 +40,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.Region;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.util.Callback;
@@ -57,7 +61,7 @@ import java.util.function.Consumer;
 /**
  * The search field is a standard text field with auto suggest capabilities
  * and a selection model for a specific type of object. This type is defined by the
- * generic type argument. The main difference to other auto suggest text fields is that
+ * generic type argument. The main difference to other auto-suggest text fields is that
  * the main outcome of this field is an object and not just the text entered by the
  * user. Another difference is how the text field automatically finds and selects the
  * first object that matches the text typed by the user so far. A third feature of
@@ -66,8 +70,23 @@ import java.util.function.Consumer;
  * provider. This last feature allows an application to let the user either pick an
  * existing object or to create a new one on-the-fly (but only if a new item producer
  * has been set).
+ * <p>
+ * The search field requires proper configuration to work correctly:
  *
- * <h3>Matcher</h3>
+ * <ol>
+ * <li><b>Suggestion Provider</b> - a callback that returns a collection of items for a given search field suggestion request. The suggestion provider is invoked asynchronously via JavaFX concurrency API (service & task). The suggestion provider gets invoked slightly delayed whenever the user types some text into the field. If the user types again the current search gets cancelled and a new search gets initiated. As long as the user types fast enough the actual search will not be performed.</li>
+ * <li><b>Converter</b> - the converter is used to convert the items found in the suggestions list to text. This is just a standard StringConverter instance (only the toString() method needs to be implemented).</li>
+ * <li><b>Cell Factory</b> - a standard list cell factory / callback used for the ListView instance shown in the popup that presents the suggested items. The default cell factory should be sufficient for most use cases. It simply displays the name of the items via the help of the string converter. However, it also underlines the text match in the name.</li>
+ * <li><b>Matcher</b> - a function taking two arguments that will be applied to the suggested items to find "perfect matches" for the given search text (entered by the user). The function takes an item and the search text as input and returns a boolean. The first perfect match found will be used to autocomplete the text of the search field.</li>
+ * <li><b>New Item Producer</b> - a callback that returns a new item instance of the type supported by the search field. This callback is used if the field is configured to create items "on-the-fly", meaning the typed text does not match anything in the suggested list of items.</li>
+ * <li><b>Comparator</b> - a standard comparator used to perform a first sorting of the suggested items. However, internally the field wraps this comparator to place some items higher up in the dropdown list as they are better matches for the current search text.</li>
+ * </ol>
+ *
+ * <p>
+ * The history manager is disabled by default, but it can be enabled using the {@link #setHistoryManager(HistoryManager)} method.
+ * We have implemented a local history manager, {@link StringHistoryManager}, which uses the Java Preferences API to store history records.
+ * You can enable it via the {@link #setHistoryManager(HistoryManager)} method.
+ * </p>
  *
  * @param <T> the type of objects to work on
  * @see #setSuggestionProvider(Callback)
@@ -81,27 +100,45 @@ public class SearchField<T> extends Control {
 
     private static final String DEFAULT_STYLE_CLASS = "search-field";
 
+    private static final boolean DEFAULT_ADDING_ITEM_TO_HISTORY_ON_ENTER = true;
+    private static final boolean DEFAULT_ADDING_ITEM_TO_HISTORY_ON_COMMIT = true;
+    private static final boolean DEFAULT_ADDING_ITEM_TO_HISTORY_ON_FOCUS_LOST = true;
+
+    private static final PseudoClass DISABLED_POPUP_PSEUDO_CLASS = PseudoClass.getPseudoClass("disabled-popup");
+
     private final SearchService searchService = new SearchService();
 
     private final TextField editor = new TextField();
 
     private final SearchFieldPopup<T> popup;
+    private final HistoryButton<String> historyButton;
 
     /**
      * Constructs a new spotlight field. The field will set defaults for the
      * matcher, the converter, the cell factory, and the comparator. It will
      * not set a default for the "new item" producer.
+     * <p>
+     * The history manager is initialized with default values.
      *
      * @see #setNewItemProducer(Callback)
      */
     public SearchField() {
         getStyleClass().add(DEFAULT_STYLE_CLASS);
 
+        historyButton = createHistoryButton();
+        setGraphic(historyButton);
+
         popup = new SearchFieldPopup<>(this);
 
         editor.textProperty().bindBidirectional(textProperty());
         editor.promptTextProperty().bindBidirectional(promptTextProperty());
 
+        // history listView placeholder
+        Label placeholder = new Label("No items.");
+        placeholder.getStyleClass().add("history-placeholder");
+        setHistoryPlaceholder(placeholder);
+
+        // suggestion listView placeholder
         setPlaceholder(new Label("No items found"));
 
         focusedProperty().addListener(it -> {
@@ -119,6 +156,10 @@ public class SearchField<T> extends Control {
             }
 
             if (!editor.isFocused()) {
+                // Add the current text to the history if the editor lost focus.
+                if (isAddingItemToHistoryOnFocusLost()) {
+                    addToHistory(editor.getText());
+                }
                 commit();
                 if (getSelectedItem() == null) {
                     editor.setText("");
@@ -129,13 +170,30 @@ public class SearchField<T> extends Control {
         });
 
         addEventFilter(KeyEvent.KEY_RELEASED, evt -> {
-            if (evt.getCode().equals(KeyCode.RIGHT) || evt.getCode().equals(KeyCode.ENTER)) {
+            KeyCode keyCode = evt.getCode();
+
+            // record the history popup showing status before hide.
+            boolean lastHistoryPopupShowing = historyButton.isPopupShowing();
+
+            // On key pressed, hide the history popup if the user pressed keys other than UP or DOWN.
+            if (keyCode != KeyCode.UP && keyCode != KeyCode.DOWN) {
+                historyButton.hidePopup();
+            }
+
+            boolean releasedEnter = keyCode.equals(KeyCode.ENTER);
+            // Add the current text to the history if the user pressed the ENTER key.
+            if (releasedEnter && isAddingItemToHistoryOnEnter() && !lastHistoryPopupShowing) {
+                addToHistory(editor.getText());
+            }
+
+            if ((keyCode.equals(KeyCode.RIGHT) || releasedEnter) && !lastHistoryPopupShowing) {
                 commit();
                 evt.consume();
                 invokeCommitHandler();
-            } else if (evt.getCode().equals(KeyCode.LEFT)) {
+            } else if (keyCode.equals(KeyCode.LEFT)) {
                 editor.positionCaret(Math.max(0, editor.getCaretPosition() - 1));
-            } else if (evt.getCode().equals(KeyCode.ESCAPE)) {
+            } else if (keyCode.equals(KeyCode.ESCAPE)) {
+                historyButton.hidePopup();
                 cancel();
                 evt.consume();
             } else if (KeyCombination.keyCombination("shortcut+a").match(evt)) {
@@ -270,6 +328,35 @@ public class SearchField<T> extends Control {
         searching.bind(searchService.runningProperty());
     }
 
+    private void onHistoryItemConfirmed(String historyItem) {
+        if (historyItem != null) {
+            int oldLen = editor.textProperty().getValueSafe().length();
+            editor.replaceText(0, oldLen, historyItem);
+        }
+        historyButton.hidePopup();
+    }
+
+    private HistoryButton<String> createHistoryButton() {
+        HistoryButton<String> historyButton = new HistoryButton<>(this);
+        historyButton.historyManagerProperty().bind(historyManagerProperty());
+        historyButton.setOnItemSelected(value -> {
+            if (StringUtils.isNotBlank(value)) {
+                setText(value);
+            }
+            historyButton.hidePopup();
+        });
+
+        // Create the graphic
+        Region graphic = new Region();
+        graphic.getStyleClass().add("icon");
+        historyButton.setGraphic(graphic);
+
+        // Configure the history button
+        historyButton.setFocusTraversable(false);
+
+        return historyButton;
+    }
+
     private void invokeCommitHandler() {
         T selectedItem = getSelectedItem();
         if (selectedItem != null) {
@@ -297,6 +384,11 @@ public class SearchField<T> extends Control {
                 if (text != null) {
                     editor.setText(text);
                     editor.positionCaret(text.length());
+
+                    // add on commit
+                    if (isAddingItemToHistoryOnCommit()) {
+                        addToHistory(text);
+                    }
                 } else {
                     clear();
                 }
@@ -307,6 +399,13 @@ public class SearchField<T> extends Control {
             getProperties().put("committed", "");
         } finally {
             committing = false;
+        }
+    }
+
+    private void addToHistory(String text) {
+        HistoryManager<String> historyManager = getHistoryManager();
+        if (historyManager != null && StringUtils.isNotBlank(text)) {
+            historyManager.add(text);
         }
     }
 
@@ -1066,6 +1165,139 @@ public class SearchField<T> extends Control {
         this.showSearchIcon.set(showSearchIcon);
     }
 
+    private ObjectProperty<Node> historyPlaceholder = new SimpleObjectProperty<>(this, "historyPlaceholder");
+
+    /**
+     * Returns the property representing the history placeholder node.
+     *
+     * @return the property representing the history placeholder node
+     */
+    public final ObjectProperty<Node> historyPlaceholderProperty() {
+        if (historyPlaceholder == null) {
+            historyPlaceholder = new SimpleObjectProperty<>(this, "historyPlaceholder");
+        }
+        return historyPlaceholder;
+    }
+
+    public final Node getHistoryPlaceholder() {
+        return historyPlaceholder == null ? null : historyPlaceholder.get();
+    }
+
+    public final void setHistoryPlaceholder(Node historyPlaceholder) {
+        historyPlaceholderProperty().set(historyPlaceholder);
+    }
+
+    // add on enter
+
+    private BooleanProperty addingItemToHistoryOnEnter;
+
+    /**
+     * Determines whether the text of the text field should be added to the history when the user presses the Enter key.
+     *
+     * @return true if the text should be added to the history on Enter, false otherwise
+     */
+    public final BooleanProperty addingItemToHistoryOnEnterProperty() {
+        if (addingItemToHistoryOnEnter == null) {
+            addingItemToHistoryOnEnter = new SimpleBooleanProperty(this, "addingItemToHistoryOnEnter", DEFAULT_ADDING_ITEM_TO_HISTORY_ON_ENTER);
+        }
+        return addingItemToHistoryOnEnter;
+    }
+
+    public final boolean isAddingItemToHistoryOnEnter() {
+        return addingItemToHistoryOnEnter == null ? DEFAULT_ADDING_ITEM_TO_HISTORY_ON_ENTER : addingItemToHistoryOnEnter.get();
+    }
+
+    public final void setAddingItemToHistoryOnEnter(boolean addingItemToHistoryOnEnter) {
+        addingItemToHistoryOnEnterProperty().set(addingItemToHistoryOnEnter);
+    }
+
+    // add on focus lost
+
+    private BooleanProperty addingItemToHistoryOnFocusLost;
+
+    /**
+     * Determines whether the text of the text field should be added to the history when the field losses its focus.
+     *
+     * @return true if the text should be added to the history on focus lost, false otherwise
+     */
+    public final BooleanProperty addingItemToHistoryOnFocusLostProperty() {
+        if (addingItemToHistoryOnFocusLost == null) {
+            addingItemToHistoryOnFocusLost = new SimpleBooleanProperty(this, "addingItemToHistoryOnFocusLost", DEFAULT_ADDING_ITEM_TO_HISTORY_ON_FOCUS_LOST);
+        }
+        return addingItemToHistoryOnFocusLost;
+    }
+
+    public final boolean isAddingItemToHistoryOnFocusLost() {
+        return addingItemToHistoryOnFocusLost == null ? DEFAULT_ADDING_ITEM_TO_HISTORY_ON_FOCUS_LOST : addingItemToHistoryOnFocusLost.get();
+    }
+
+    public final void setAddingItemToHistoryOnFocusLost(boolean addingItemToHistoryOnFocusLost) {
+        addingItemToHistoryOnFocusLostProperty().set(addingItemToHistoryOnFocusLost);
+    }
+
+    // add on commit
+
+    private BooleanProperty addingItemToHistoryOnCommit;
+
+    /**
+     * Determines whether the text of the text field should be added to the history when the user commits to a value.
+     *
+     * @return true if the text should be added to the history on commit, false otherwise
+     */
+    public final BooleanProperty addingItemToHistoryOnCommitProperty() {
+        if (addingItemToHistoryOnCommit == null) {
+            addingItemToHistoryOnCommit = new SimpleBooleanProperty(this, "addingItemToHistoryOnCommit", DEFAULT_ADDING_ITEM_TO_HISTORY_ON_COMMIT);
+        }
+        return addingItemToHistoryOnCommit;
+    }
+
+    public final boolean isAddingItemToHistoryOnCommit() {
+        return addingItemToHistoryOnCommit == null ? DEFAULT_ADDING_ITEM_TO_HISTORY_ON_COMMIT : addingItemToHistoryOnCommit.get();
+    }
+
+    public final void setAddingItemToHistoryOnCommit(boolean addingItemToHistoryOnCommit) {
+        addingItemToHistoryOnCommitProperty().set(addingItemToHistoryOnCommit);
+    }
+
+    private ObjectProperty<HistoryManager<String>> historyManager;
+
+    /**
+     * The history manager that is used to manage the history of the SearchField.
+     * <p>
+     * If its value is null, the history feature will not be enabled, which means only
+     * the magnifying glass icon will be displayed, and the dropdown arrow next to the
+     * magnifying glass will not be shown.
+     * <p>
+     * If its value is not null, the history feature will be enabled, meaning that both
+     * the magnifying glass icon and the dropdown arrow will be displayed. Clicking the
+     * magnifying glass icon button will display the history popup.
+     * <p>
+     * To enable the history feature, you need to set an instance of {@link HistoryManager}.
+     * Typically, you would use an instance of {@link StringHistoryManager}, which is an
+     * implementation of {@link HistoryManager} that manages string-type history records.
+     *
+     * @return the property representing the history manager
+     */
+    public final ObjectProperty<HistoryManager<String>> historyManagerProperty() {
+        if (historyManager == null) {
+            historyManager = new SimpleObjectProperty<>(this, "historyManager") {
+                @Override
+                protected void invalidated() {
+                    pseudoClassStateChanged(DISABLED_POPUP_PSEUDO_CLASS, get() == null);
+                }
+            };
+        }
+        return historyManager;
+    }
+
+    public final HistoryManager<String> getHistoryManager() {
+        return historyManager == null ? null : historyManager.get();
+    }
+
+    public final void setHistoryManager(HistoryManager<String> historyManager) {
+        historyManagerProperty().set(historyManager);
+    }
+
     /**
      * A custom list cell implementation that is capable of underlining the part
      * of the text that matches the user-typed search text. The cell uses a text flow
@@ -1127,4 +1359,5 @@ public class SearchField<T> extends Control {
     public final SearchFieldPopup<T> getPopup() {
         return popup;
     }
+
 }

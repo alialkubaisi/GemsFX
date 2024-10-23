@@ -1,7 +1,10 @@
-module com.dlsc.gemsfx.demo {
+open module com.dlsc.gemsfx.demo {
     requires java.prefs;
 
     requires com.dlsc.pdfviewfx;
+
+    requires com.fasterxml.jackson.core;
+    requires com.fasterxml.jackson.databind;
 
     requires ch.eswitch.gemsfx;
 
@@ -17,7 +20,9 @@ module com.dlsc.gemsfx.demo {
 
     requires fr.brouillard.oss.cssfx;
     requires net.synedra.validatorfx;
+    requires org.apache.commons.lang3;
 
     exports com.dlsc.gemsfx.demo;
     exports com.dlsc.gemsfx.demo.binding;
+    exports com.dlsc.gemsfx.demo.util;
 }

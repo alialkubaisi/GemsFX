@@ -19,8 +19,6 @@ module ch.eswitch.gemsfx {
     requires org.apache.commons.lang3;
     requires org.controlsfx.controls;
 
-    requires retrofit2;
-    requires okhttp3;
     requires java.desktop;
     requires com.dlsc.pickerfx;
     requires com.dlsc.unitfx;
@@ -28,7 +26,6 @@ module ch.eswitch.gemsfx {
     exports com.dlsc.gemsfx;
     exports com.dlsc.gemsfx.daterange;
     exports com.dlsc.gemsfx.incubator;
-    exports com.dlsc.gemsfx.incubator.columnbrowser;
     exports com.dlsc.gemsfx.incubator.templatepane;
     exports com.dlsc.gemsfx.util;
     exports com.dlsc.gemsfx.skins;
@@ -36,4 +33,5 @@ module ch.eswitch.gemsfx {
     exports com.dlsc.gemsfx.infocenter;
     exports com.dlsc.gemsfx.treeview;
     exports com.dlsc.gemsfx.treeview.link;
+    exports com.dlsc.gemsfx.gridtable;
 }
